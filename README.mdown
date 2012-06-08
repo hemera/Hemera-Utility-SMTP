@@ -9,7 +9,7 @@ TODO
 
 # License
 
-**Hemera Engine** is available under the MIT license:
+**Hemera Engine - Utility SMTP** is available under the MIT license:
 
 *Copyright (c) 2012 Yi Wang (hemera)*
 
