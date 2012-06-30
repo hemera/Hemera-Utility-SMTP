@@ -1,15 +1,15 @@
-# Hemera Engine - Utility SMTP
+# Hemera - Utility SMTP
 
 Created by **Yi Wang (hemera)**
 
-**Hemera Engine - Utility SMTP** TODO
+**Hemera - Utility SMTP** TODO
 
 # Documentation
 TODO
 
 # License
 
-**Hemera Engine - Utility SMTP** is available under the MIT license:
+**Hemera - Utility SMTP** is available under the MIT license:
 
 *Copyright (c) 2012 Yi Wang (hemera)*
 
