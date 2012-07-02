@@ -11,7 +11,7 @@ import javax.mail.MessagingException;
 import javax.mail.Session;
 import javax.mail.Transport;
 
-import hemera.core.utility.config.TimeData;
+import hemera.core.utility.data.TimeData;
 import hemera.core.utility.logging.FileLogger;
 import hemera.utility.smtp.enumn.ESMTPConfig;
 

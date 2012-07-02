@@ -2,7 +2,7 @@ package hemera.utility.smtp.enumn;
 
 import java.util.concurrent.TimeUnit;
 
-import hemera.core.utility.config.TimeData;
+import hemera.core.utility.data.TimeData;
 
 /**
  * <code>ESMTPConfig</code> defines the enumeration
