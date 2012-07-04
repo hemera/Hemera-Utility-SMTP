@@ -1,17 +1,20 @@
+# Hemera
+Created by **Yi Wang (Neakor, hemera)**
+
+**Please note that this is one of the building blocks of the Hemera
+Application Platform. Please refer to [Hemera-Release](https://github.com/hemera/Hemera-Release)
+for the complete stable releases and [documentation](https://github.com/hemera/Hemera-Release/wiki).**
+
 # Hemera - Utility SMTP
 
-Created by **Yi Wang (hemera)**
-
-**Hemera - Utility SMTP** TODO
-
-# Documentation
-TODO
+**Hemera - Utility SMTP** provides a set of SMTP E-mail related utility units that
+can be used in various applications for convenient SMTP operations.
 
 # License
 
 **Hemera - Utility SMTP** is available under the MIT license:
 
-*Copyright (c) 2012 Yi Wang (hemera)*
+*Copyright (c) 2012 Yi Wang (Neakor, hemera)*
 
 *Permission is hereby granted, free of charge, to any person obtaining a copy*
 *of this software and associated documentation files (the "Software"), to deal*
