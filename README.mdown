@@ -5,6 +5,19 @@ Created by **Yi Wang (Neakor, hemera)**
 Application Platform. Please refer to [Hemera-Release](https://github.com/hemera/Hemera-Release)
 for the complete stable releases and [documentation](https://github.com/hemera/Hemera-Release/wiki).**
 
+## Introdction
+
+Hemera is a high-performance, lightweight, RESTful consumer server application
+development platform based on the Java SE platform. It aims to help consumer
+application developers to focus on their application specific logic development
+without having to worry about the low level system details.
+
+Hemera is designed to have an extremely low learning curve, so you can start working
+on your application as quickly as possible, and iterate as often as possible. At the
+same time, Hemera provides guidance and enforcements to application server
+architecture through its application extension interface, to help improve software
+mainability and scalability.
+
 # Hemera - Utility SMTP
 
 **Hemera - Utility SMTP** provides a set of SMTP E-mail related utility units that
