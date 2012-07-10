@@ -13,16 +13,11 @@ import javax.mail.Transport;
 
 import hemera.core.utility.data.TimeData;
 import hemera.core.utility.logging.FileLogger;
-import hemera.utility.smtp.enumn.ESMTPConfig;
 
 /**
  * <code>SMTPService</code> defines the implementation
  * of a singleton utility unit that is responsible for
  * sending of <code>Mail</code> via SMTP protocol.
- * <p>
- * <code>SMTPService</code> depends on the values in
- * <code>ESMTPConfig</code> for establishing connection
- * with the service provider.
  * <p>
  * <code>SMTPService</code> provides the thread-safety
  * guarantees by relying on the underlying Java library
@@ -31,7 +26,10 @@ import hemera.utility.smtp.enumn.ESMTPConfig;
  * <code>SMTPService</code> will attempt to establish
  * a connection with the specified service provider if
  * there is no existing connection or the existing one
- * has timed-out.
+ * has timed-out. It caches the connected host for all
+ * subsequent mail sending unless the service invoked
+ * to connect to a different host. In which case, the
+ * new host will be cached and replace the old one.
  *
  * @author Yi Wang (Neakor)
  * @version 1.0.0
@@ -41,7 +39,7 @@ public enum SMTPService {
 	 * The singleton instance.
 	 */
 	instance;
-	
+
 	/**
 	 * The <code>FileLogger</code> instance.
 	 */
@@ -57,26 +55,43 @@ public enum SMTPService {
 	 */
 	private final WriteLock writelock;
 	/**
+	 * The <code>String</code> of current host address.
+	 */
+	private String host;
+	/**
+	 * The <code>int</code> current host port.
+	 */
+	private int port;
+	/**
+	 * The <code>String</code> current host login user
+	 * name.
+	 */
+	private String username;
+	/**
+	 * The <code>String</code> current host login
+	 * password.
+	 */
+	private String password;
+	/**
+	 * The <code>boolean</code> current host login
+	 * require-TLS flag.
+	 */
+	private boolean requireTLS;
+	/**
+	 * The <code>TimeData</code> of current host timeout.
+	 */
+	private TimeData timeout;
+	/**
 	 * The <code>Session</code> instance used to create
 	 * the <code>Mail</code> instances.
-	 * <p>
-	 * This field is guarded by the read-write lock
-	 * and only created once. Direct access to this
-	 * field should never occur. Rather the method
-	 * <code>getSession</code> should be used.
 	 */
 	private Session session;
 	/**
 	 * The <code>Transport</code> instance used to
 	 * send the <code>Mail</code>.
-	 * <p>
-	 * This field is guarded by the read-write lock
-	 * and only created once. Direct access to this
-	 * field should never occur. Rather the method
-	 * <code>getTransport</code> should be used.
 	 */
 	private Transport transport;
-	
+
 	/**
 	 * Constructor of <code>SMTPService</code>.
 	 */
@@ -86,52 +101,83 @@ public enum SMTPService {
 		this.readlock = lock.readLock();
 		this.writelock = lock.writeLock();
 	}
-	
+
 	/**
-	 * Connect the SMTP service to its service provider
-	 * based on configuration values specified in the
-	 * <code>ESMTPConfig</code>.
-	 * <p>
-	 * If the transport is already connected, this method
-	 * returns directly.
-	 * <p>
-	 * This method relies on external locking. It does
-	 * not lock internally, though write-lock must be
-	 * obtained first before invoking this method. It
-	 * only provides the connection logic.
+	 * Connect the SMTP service to the service provider
+	 * based on specified values if it is not already
+	 * connected.
+	 * @param host The <code>String</code> host address.
+	 * @param port The <code>int</code> port to connect.
+	 * @param username The <code>String</code> login
+	 * user name.
+	 * @param password The <code>String</code> login
+	 * password.
+	 * @param requireTLS <code>true</code> if login
+	 * requires TLS. <code>false</code> otherwise.
+	 * @param timeout The <code>TimeData</code> of the
+	 * connection timeout.
+	 * @return <code>true</code> if the service connected
+	 * to the specified host. <code>false</code> if the
+	 * service is already connected to the host.
 	 */
-	private void connect() {
-		// Check JVM encoding.
-		final String encoding = Charset.defaultCharset().displayName();
-		if (!encoding.equals("UTF-8") && !encoding.equals("UTF-16")) {
-			this.logger.warning("JVM encoding is not UTF-8 nor UTF-16. Mail contents may not be encoded correctly.");
-		}
-		// Retrieve configuration values.
-		final String host = (String)ESMTPConfig.SMTPHost.value();
-		final int port = (Integer)ESMTPConfig.SMTPPort.value();
-		final String username = (String)ESMTPConfig.SMTP_Auth_Username.value();
-		final String password = (String)ESMTPConfig.SMTP_Auth_Password.value();
-		final Boolean requiresTLS = (Boolean)ESMTPConfig.SMTP_Auth_RequireSTARTTLS.value();
-		final TimeData timeout = (TimeData)ESMTPConfig.SMTP_Timeout.value();
-		final long timeoutmilli = timeout.unit.toMillis(timeout.value);
-		// Create session.
-		final Properties properties = new Properties();
-		properties.put("mail.transport.protocol", "smtp");
-		properties.put("mail.smtp.auth", "true");
-		properties.put("mail.smtp.starttls.enable", requiresTLS.toString());
-		properties.put("mail.smtp.timeout", timeoutmilli);
-		properties.put("mail.smtp.connectiontimeout", timeoutmilli);
-		this.session = Session.getInstance(properties);
-		// Retrieve and connect transport.
+	public boolean connect(final String host, final int port, final String username,
+			final String password, final boolean requireTLS, final TimeData timeout) {
+		this.writelock.lock();
 		try {
-			this.transport = this.session.getTransport("smtp");
-			this.transport.connect(host, port, username, password);
-		} catch (final Exception e) {
-			this.logger.severe("Failed to connect SMTP Transport");
-			this.logger.exception(e);
+			// Already connected.
+			if (this.host != null && this.host.equals(host)) return false;
+			// Connect to new host.
+			else {
+				this.host = host;
+				this.port = port;
+				this.username = username;
+				this.password = password;
+				this.requireTLS = requireTLS;
+				this.timeout = timeout;
+				return this.connectToCurrentHost();
+			}
+		} finally {
+			this.writelock.unlock();
 		}
 	}
-	
+
+	/**
+	 * Connect to the current host.
+	 * @return <code>true</code> if connection succeeded.
+	 * <code>false</code> otherwise.
+	 */
+	private boolean connectToCurrentHost() {
+		this.writelock.lock();
+		try {
+			// Check JVM encoding.
+			final String encoding = Charset.defaultCharset().displayName();
+			if (!encoding.equals("UTF-8") && !encoding.equals("UTF-16")) {
+				this.logger.warning("JVM encoding is not UTF-8 nor UTF-16. Mail contents may not be encoded correctly.");
+			}
+			// Create session.
+			final long timeoutmilli = this.timeout.unit.toMillis(this.timeout.value);
+			final Properties properties = new Properties();
+			properties.put("mail.transport.protocol", "smtp");
+			properties.put("mail.smtp.auth", "true");
+			properties.put("mail.smtp.starttls.enable", String.valueOf(this.requireTLS));
+			properties.put("mail.smtp.timeout", timeoutmilli);
+			properties.put("mail.smtp.connectiontimeout", timeoutmilli);
+			this.session = Session.getInstance(properties);
+			// Retrieve and connect transport.
+			try {
+				this.transport = this.session.getTransport("smtp");
+				this.transport.connect(this.host, this.port, this.username, this.password);
+			} catch (final Exception e) {
+				this.logger.severe("Failed to connect SMTP Transport");
+				this.logger.exception(e);
+				return false;
+			}
+			return true;
+		} finally {
+			this.writelock.unlock();
+		}
+	}
+
 	/**
 	 * Send the given mail using the SMTP service.
 	 * @param mail The <code>Mail</code> to be sent.
@@ -142,7 +188,7 @@ public enum SMTPService {
 		final Transport transport = this.getTransport();
 		transport.sendMessage(mail, mail.getRecipients(Message.RecipientType.TO));
 	}
-	
+
 	/**
 	 * Disconnect the SMTP service from its provider.
 	 * If the SMTP service is not connected, this method
@@ -156,6 +202,7 @@ public enum SMTPService {
 				this.transport.close();
 				this.session = null;
 				this.transport = null;
+				this.host = null;
 			} catch (final Exception e) {
 				this.logger.severe("Failed to disconnect SMTP Transport");
 				this.logger.exception(e);
@@ -165,7 +212,7 @@ public enum SMTPService {
 			this.writelock.unlock();
 		}
 	}
-	
+
 	/**
 	 * Retrieve the session instance. The returned
 	 * instance is guaranteed to be valid and its
@@ -175,43 +222,31 @@ public enum SMTPService {
 	public Session getSession() {
 		this.readlock.lock();
 		try {
-			if (this.transport == null || !this.transport.isConnected()) {
-				this.readlock.unlock();
-				this.writelock.lock();
-				try {
-					if (this.transport == null || !this.transport.isConnected()) {
-						this.connect();
-					}
-				} finally {
-					this.readlock.lock();
-					this.writelock.unlock();
-				}
+			// Not initialized yet.
+			if (this.host == null) return null;
+			// Timed out, reconnect.
+			else if (!this.transport.isConnected()) {
+				this.connectToCurrentHost();
 			}
 			return this.session;
 		} finally {
 			this.readlock.unlock();
 		}
 	}
-	
+
 	/**
 	 * Retrieve the transport instance. The returned
 	 * instance is guaranteed to be connected.
 	 * @return The <code>Transport</code> instance.
 	 */
-	public Transport getTransport() {
+	private Transport getTransport() {
 		this.readlock.lock();
 		try {
-			if (this.transport == null || !this.transport.isConnected()) {
-				this.readlock.unlock();
-				this.writelock.lock();
-				try {
-					if (this.transport == null || !this.transport.isConnected()) {
-						this.connect();
-					}
-				} finally {
-					this.readlock.lock();
-					this.writelock.unlock();
-				}
+			// Not initialized yet.
+			if (this.host == null) return null;
+			// Timed out, reconnect.
+			else if (!this.transport.isConnected()) {
+				this.connectToCurrentHost();
 			}
 			return this.transport;
 		} finally {
