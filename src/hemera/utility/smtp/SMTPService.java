@@ -87,6 +87,13 @@ public enum SMTPService {
 
 	/**
 	 * Connect the service to the given host.
+	 * <p>
+	 * This method checks for duplicate invocations.
+	 * If the service is currently set to connect
+	 * to the same host with the same parameters, the
+	 * invocation is ignored. Otherwise the existing
+	 * connection is closed and new conneciton is
+	 * established.
 	 * @param host The <code>String</code> SMTP host
 	 * address.
 	 * @param port The <code>int</code> host port to
@@ -104,6 +111,12 @@ public enum SMTPService {
 			final String password, final boolean requireTLS) throws MessagingException {
 		this.writeLock.lock();
 		try {
+			// Check if the connection is a duplicate.
+			if (this.host.equals(host) && this.port == port && this.username.equals(username) &&
+					this.password.equals(password) && this.requireTLS == requireTLS) {
+				return;
+			}
+			// Make new connection.
 			this.host = host;
 			this.port = port;
 			this.username = username;
