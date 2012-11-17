@@ -10,12 +10,12 @@ import javax.mail.internet.MimeMessage;
 
 /**
  * <code>Mail</code> defines implementation of Email
- * that can be sent via <code>SMTPTransport</code>.
+ * that can be sent via <code>SMTPService</code>.
  * It provides various convenient methods for setting
  * the parameters of an Email. It internally depends
- * on the <code>SMTPTransport</code> being connected,
+ * on the <code>SMTPService</code> being connected,
  * thus an instance cannot be constructed until the
- * <code>SMTPTransport</code> is connected.
+ * <code>SMTPService</code> is connected.
  *
  * @author Yi Wang (Neakor)
  * @version 1.0.0
@@ -24,11 +24,9 @@ public class Mail extends MimeMessage {
 
 	/**
 	 * Constructor of <code>Mail</code>.
-	 * @param transport The <code>SMTPTransport</code>
-	 * used to send this message.
 	 */
-	public Mail(final SMTPTransport transport) {
-		super(transport.session);
+	public Mail() {
+		super(SMTPService.instance.getSession());
 	}
 	
 	/**
