@@ -112,8 +112,10 @@ public enum SMTPService {
 		this.writeLock.lock();
 		try {
 			// Check if the connection is a duplicate.
-			if (this.host.equals(host) && this.port == port && this.username.equals(username) &&
-					this.password.equals(password) && this.requireTLS == requireTLS) {
+			if (this.host != null && this.port > 0 && this.username != null &&
+					this.password != null && this.host.equals(host) && this.port == port &&
+					this.username.equals(username) && this.password.equals(password) &&
+					this.requireTLS == requireTLS) {
 				return;
 			}
 			// Make new connection.
