@@ -44,6 +44,28 @@ public enum SMTPService {
 	 */
 	private final WriteLock writeLock;
 	/**
+	 * The <code>String</code> current SMTP host address.
+	 */
+	private String host;
+	/**
+	 * The <code>int</code> current SMTP host port.
+	 */
+	private int port;
+	/**
+	 * The <code>String</code> current SMTP login user
+	 * name.
+	 */
+	private String username;
+	/**
+	 * The <code>String</code> current SMTP login
+	 * password.
+	 */
+	private String password;
+	/**
+	 * The <code>boolean</code> current TLS flag.
+	 */
+	private boolean requireTLS;
+	/**
 	 * The <code>Session</code> instance.
 	 */
 	private Session session;
@@ -82,6 +104,27 @@ public enum SMTPService {
 			final String password, final boolean requireTLS) throws MessagingException {
 		this.writeLock.lock();
 		try {
+			this.host = host;
+			this.port = port;
+			this.username = username;
+			this.password = password;
+			this.requireTLS = requireTLS;
+			this.connectToCurrentHost();
+		} finally {
+			this.writeLock.unlock();
+		}
+	}
+	
+	/**
+	 * Connect to the current host.
+	 * <p>
+	 * This method acquires the write lock.
+	 * @throws MessagingException If establishing the
+	 * SMTP connection failed.
+	 */
+	private void connectToCurrentHost() throws MessagingException {
+		this.writeLock.lock();
+		try {
 			// Disconenct old transport if necessary.
 			if (this.transport != null) {
 				this.disconnect();
@@ -95,11 +138,11 @@ public enum SMTPService {
 			final Properties properties = new Properties();
 			properties.put("mail.transport.protocol", "smtp");
 			properties.put("mail.smtp.auth", "true");
-			properties.put("mail.smtp.starttls.enable", String.valueOf(requireTLS));
+			properties.put("mail.smtp.starttls.enable", String.valueOf(this.requireTLS));
 			this.session = Session.getInstance(properties);
 			// Retrieve and connect transport.
 			this.transport = this.session.getTransport("smtp");
-			this.transport.connect(host, port, username, password);
+			this.transport.connect(this.host, this.port, this.username, this.password);
 		} finally {
 			this.writeLock.unlock();
 		}
@@ -112,11 +155,9 @@ public enum SMTPService {
 	 */
 	public void sendMail(final Mail mail) throws MessagingException {
 		if (mail == null) return;
+		this.checkConnection();
 		this.readLock.lock();
 		try {
-			if (this.transport == null || !this.transport.isConnected()) {
-				throw new MessagingException("SMTP service is not yet connected.");
-			}
 			this.transport.sendMessage(mail, mail.getRecipients(Message.RecipientType.TO));
 		} finally {
 			this.readLock.unlock();
@@ -140,10 +181,34 @@ public enum SMTPService {
 	}
 	
 	/**
+	 * Check if the connection is still valid and
+	 * reconnect if not.
+	 * <p>
+	 * This method acquires the write lock.
+	 * @throws MessagingException If establishing
+	 * the connection failed.
+	 */
+	private void checkConnection() throws MessagingException {
+		this.writeLock.lock();
+		try {
+			if (this.transport == null) {
+				throw new MessagingException("SMTP service is not yet created.");
+			} else if (!this.transport.isConnected()) {
+				this.connectToCurrentHost();
+			}
+		} finally {
+			this.writeLock.unlock();
+		}
+	}
+	
+	/**
 	 * Retrieve the session instance.
 	 * @return The <code>Session</code> instance.
+	 * @throws MessagingException If establishing
+	 * the connection failed.
 	 */
-	Session getSession() {
+	Session getSession() throws MessagingException {
+		this.checkConnection();
 		this.readLock.lock();
 		try {
 			return this.session;

@@ -24,8 +24,10 @@ public class Mail extends MimeMessage {
 
 	/**
 	 * Constructor of <code>Mail</code>.
+	 * @throws MessagingException If establishing
+	 * the connection failed.
 	 */
-	public Mail() {
+	public Mail() throws MessagingException {
 		super(SMTPService.instance.getSession());
 	}
 	
