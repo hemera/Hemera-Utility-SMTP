@@ -187,7 +187,7 @@ public enum SMTPService {
 	public void disconnect() throws MessagingException {
 		this.writeLock.lock();
 		try {
-			this.transport.close();
+			if (this.transport != null) this.transport.close();
 			this.session = null;
 			this.transport = null;
 		} finally {
